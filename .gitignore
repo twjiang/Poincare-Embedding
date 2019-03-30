@@ -1,0 +1,16 @@
+# ignore .torch files
+*.torch
+
+data/
+results/
+models/
+logs/
+src/old/
+src/old_np/
+relevant_code/
+
+# Byte-compiled / optimized / DLL files
+src/__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
