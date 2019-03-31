@@ -1,3 +1,8 @@
+# Hierarchy Embedding in Poincare Space	
+#	by Meng Jiang 		mjiang2@nd.edu
+#	by Qingkai Zeng 	qzeng@nd.edu
+#	by Tianwen Jiang 	tjiang2@nd.edu 
+
 import sys, os
 import argparse
 import torch
@@ -21,7 +26,7 @@ parser.add_argument('-name', dest='name', default=None, help='Assign a name to t
 # Embedding hyper-parameters
 parser.add_argument('-num_neg_samp', dest='num_neg_samp', default=20, type=int, help='Number of Negative Samples')
 parser.add_argument('-batch_sz', dest='batch_sz', default=10000, type=int, help='batch size')
-parser.add_argument('-max_epochs', dest='max_epochs', default=10, type=int, help='Maximum number of epoch')
+parser.add_argument('-max_epochs', dest='max_epochs', default=200, type=int, help='Maximum number of epoch')
 parser.add_argument('-lr', dest='lr', default=0.001, type=float, help='Learning rate')
 parser.add_argument('-init', dest='init', default=1e-3, type=float)
 parser.add_argument('-EPS', dest='EPS', default=1e-5, type=float)
@@ -53,7 +58,6 @@ if __name__ == '__main__':
 	if args.name == None: 
 		args.name = args.dataset + '_' + time.strftime("%d_%m_%Y") + '_' + time.strftime("%H:%M:%S")
 
-	args.file_hyperparams	= '/hyperparams.json'		# Location for loading hyperparameters
 	args.file_results	= '/results.json'		# Location for loading hyperparameters
 
 	args.out_path  = args.out_dir  + '/' + args.name
@@ -63,24 +67,21 @@ if __name__ == '__main__':
 	if not os.path.isdir(args.out_path): os.system('mkdir -p ' + args.out_path)	# Create the output directory if doesn't exist
 
 	dc = DataCenter(args)
-	model = Poincare(args, dc).to(args.device)
+	model = Poincare(args, dc, args.device).to(device)
 
 	dc.logger.info('Concept Embedding Training')
 	for epoch in range(args.max_epochs):
 		dc.logger.info('\tEPOCH-' + str(epoch+1))
-		train(args, dc, model, epoch+1)
-		sys.exit(1)
-		embedding = model.Concept_Embeddings.weight.detach().numpy()
 		embedding_file = args.out_path+'/Concept_Embeddings_EPOCH_'+str(epoch)+'.tsv'
+		if checkFile(embedding_file):
+			continue
+		else:
+			if epoch > 0:
+				tsv2emb(embedding_file.replace('EPOCH_'+str(epoch), 'EPOCH_'+str(epoch-1)), model.Concept_Embeddings)
+		train(args, dc, model, epoch)
+		embedding = model.Concept_Embeddings
 		emb2tsv(embedding_file, embedding, dc.words)
-		nodes_plot(embedding_file, args.target_file, args.out_path+'/Concept_Embeddings_EPOCH_'+str(epoch)+'.pdf', args.center_name)
+		nodes_plot(embedding_file, args.target_file, args.out_path+'/Concept_Embeddings_EPOCH_'+str(epoch)+'.png', args.center_name)
 	emb2tsv(args.out_path+'/Concept_Embeddings.tsv', embedding, dc.words)
 	nodes_plot(embedding_file, args.target_file, args.out_path+'/Concept_Embeddings.pdf', args.center_name)
 	
-	# nword = len(word2idx)
-	# embedding = np.ndarray(shape=(nword,DIM))
-	# embedding = np.random.uniform(-INIT,INIT,(nword,DIM))
-	# for epoch in range(EPOCH):
-	# embedding = training(embedding, hypernymidx,word2idx,epoch)
-	# emb2tsv(fileoutput+'_'+str(epoch)+'.tsv',embedding,words)
-	# emb2tsv(fileoutput,embedding,words)
