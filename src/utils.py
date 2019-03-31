@@ -112,15 +112,26 @@ def train(args, dc, model, current):
 
 	batches = math.ceil(len(hypernymidx)/args.batch_sz)
 	for index in range(batches):
+		dc.logger.info(f'batch: [{index+1}/{batches}]')
 		hypernymidx_batch = hypernymidx[index*args.batch_sz: (index+1)*args.batch_sz]
+		
 		left_indx, right_indx = list(zip(*hypernymidx_batch))
 		left_indx_batch = [[i]*(args.num_neg_samp+1) for i in left_indx]
 		right_indx_batch = [[i]+neg_sample(right_indx, i, args.num_neg_samp) for i in right_indx]
 		left_indx_batch = torch.LongTensor(left_indx_batch).to(args.device)
 		right_indx_batch = torch.LongTensor(right_indx_batch).to(args.device)
-		dists = model(left_indx_batch, right_indx_batch)
-		dc.logger.info(f'batch: [{index+1}/{batches}]')
+		print(left_indx_batch.size(), right_indx_batch.size())
 
+		result_tuple, dists = model(left_indx_batch, right_indx_batch)
+		print(dists.size())
+		Z = torch.sum(torch.exp(-1 * dists), -1).view(-1,1)
+		print(Z.size())
+		left_grad_pos,right_grad_pos = model.backward(left_indx_batch[:,0:1], right_indx_batch[:,0:1], 1-torch.exp(-1 * dists[:,0:1])/Z, (ele[:,0:1].view(ele[:,0:1].size(0), ele[:,0:1].size(1), 1) for ele in result_tuple))
+		left_grad_neg, right_grad_neg = model.backward(left_indx_batch[:,1:], right_indx_batch[:,1:], -1*torch.exp(-1 * dists[:,1:])/Z, (ele[:,1:].view(ele[:,1:].size(0), ele[:,1:].size(1), 1) for ele in result_tuple))
+		left_grad = torch.cat([left_grad_pos, left_grad_neg], 1)
+		right_grad = torch.cat([right_grad_pos, right_grad_neg], 1)
+		print(left_grad.size(), right_grad.size())
+		
 
 	# start = time.clock()
 	# left_indx = [0 for i in range(NEG+1)]
